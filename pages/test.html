@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>词汇量测试 - 随看随学</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="test.css">
+</head>
+<body>
+  <main>
+    <section id="intro" class="panel">
+      <h1>先测一下你的词汇量</h1>
+      <p>大约 3 分钟。每题选出单词的中文意思，不认识就选「不认识」，别猜，结果会更准。</p>
+      <p class="muted">测完后，阅读英文网页时比你水平更难的词会被自动标出来。</p>
+      <button id="start" class="primary">开始测试</button>
+    </section>
+
+    <section id="quiz" class="panel" hidden>
+      <div class="progress"><div id="bar"></div></div>
+      <div id="word" class="word"></div>
+      <div id="options" class="options"></div>
+    </section>
+
+    <section id="result" class="panel" hidden>
+      <h1>你的词汇量约 <span id="vocab"></span> 词</h1>
+      <p class="muted" id="detail"></p>
+      <div class="adjust">
+        <label for="level">生词标准：词频排名在 <b id="levelText"></b> 之后的词标为生词</label>
+        <input id="level" type="range" min="500" max="30000" step="500">
+        <p class="muted">觉得标出来的词太多就往右拖，太少就往左拖。以后也可以在插件面板里改。</p>
+      </div>
+      <div class="row">
+        <button id="save" class="primary">保存</button>
+        <button id="retry">重新测试</button>
+      </div>
+      <p id="saved" class="saved" hidden>已保存。现在打开任意英文网页，生词会被标黄，鼠标停在上面就能看释义。</p>
+    </section>
+  </main>
+  <script src="../lib/store.js"></script>
+  <script src="test.js"></script>
+</body>
+</html>

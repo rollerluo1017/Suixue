@@ -1,0 +1,19 @@
+ll-w {
+  background: rgba(250, 204, 21, 0.22);
+  border-bottom: 2px solid #f59e0b;
+  border-radius: 2px;
+  cursor: help;
+}
+ll-w.ll-saved {
+  background: rgba(96, 165, 250, 0.2);
+  border-bottom-color: #3b82f6;
+}
+#ll-root {
+  all: initial;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  z-index: 2147483647 !important;
+}

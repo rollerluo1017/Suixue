@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>单词本 - 随看随学</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="wordbook.css">
+</head>
+<body>
+  <main>
+    <div class="top">
+      <h1>单词本 <span id="count" class="muted"></span></h1>
+      <div class="tools">
+        <input type="search" id="search" placeholder="搜索单词或释义">
+        <select id="source">
+          <option value="">全部来源</option>
+          <option value="reading">阅读</option>
+          <option value="video">视频</option>
+        </select>
+        <button id="export">导出 CSV</button>
+      </div>
+    </div>
+    <div id="list"></div>
+    <p id="empty" class="muted" hidden>单词本还是空的。在网页上选中单词点「查词」，或者在视频页面打开插件面板总结高频词，就能加进来。</p>
+
+    <details class="known">
+      <summary>我认识的词 <span id="knownCount" class="muted"></span></summary>
+      <p class="muted">点了「我认识」的词不会再被标出来。点词可以撤销。</p>
+      <div id="knownList"></div>
+    </details>
+  </main>
+  <script src="../lib/store.js"></script>
+  <script src="wordbook.js"></script>
+</body>
+</html>

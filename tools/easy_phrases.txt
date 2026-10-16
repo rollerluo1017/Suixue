@@ -1,0 +1,154 @@
+# 太常见、不值得放进单词本的短语。每行一个，# 开头是注释。
+# 词典里标记为牛津核心词的短语会自动加进来，这里补充其余的。
+a bit
+a few
+a little
+a lot
+a lot of
+lots of
+a couple of
+a kind of
+a number of
+a piece of
+all day
+all right
+all the time
+and so on
+as a result
+as a matter of fact
+as far as
+as long as
+as soon as
+as well
+as well as
+as if
+as though
+at all
+at first
+at home
+at last
+at least
+at most
+at night
+at once
+at that time
+at the same time
+at the moment
+at the end of
+at the beginning
+at work
+because of
+by the way
+by yourself
+come back
+come in
+come on
+come out
+come from
+come here
+do with
+each other
+even if
+even though
+every day
+find out
+for a while
+for example
+for instance
+for sure
+from now on
+get back
+get in
+get off
+get on
+get out
+get up
+get to
+give back
+go back
+go home
+go on
+go out
+go to bed
+go up
+go down
+grow up
+have to
+has to
+had to
+how about
+how much
+how many
+in fact
+in front of
+in order to
+in time
+in the end
+in the morning
+in the future
+in the past
+instead of
+in addition
+in general
+in other words
+just now
+kind of
+lie down
+look at
+look for
+look after
+look like
+look forward to
+listen to
+more and more
+more than
+next to
+no longer
+no one
+not only
+of course
+on time
+on the other hand
+one another
+out of
+over there
+pick up
+put on
+put down
+right now
+right away
+so that
+sort of
+stand up
+sit down
+so far
+such as
+take off
+take care
+take care of
+take place
+talk about
+thank you
+thanks to
+think about
+think of
+turn on
+turn off
+turn around
+up to
+used to
+wait for
+wake up
+want to
+need to
+what about
+would like
+would rather
+work out
+write down
+as soon as possible
+first of all
+not at all
+all over
+more or less
+a great deal

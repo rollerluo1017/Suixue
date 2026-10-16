@@ -1,0 +1,49 @@
+:host { all: initial; }
+.card, .bubble {
+  position: absolute;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #1f2937;
+}
+.card {
+  width: 300px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+.card[hidden], .bubble[hidden] { display: none; }
+.head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.word { font-size: 18px; font-weight: 600; }
+.ph { color: #6b7280; font-size: 13px; }
+.form { color: #6b7280; font-size: 12px; margin-top: 2px; }
+.meaning { margin-top: 6px; }
+.meaning.sub, .part { color: #4b5563; font-size: 13px; margin-top: 4px; }
+.actions { display: flex; gap: 8px; margin-top: 10px; }
+button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+}
+button.add { background: #2563eb; border-color: #2563eb; color: #fff; }
+button:disabled { opacity: 0.6; cursor: default; }
+.bubble {
+  white-space: nowrap;
+  padding: 3px 10px;
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+@media (prefers-color-scheme: dark) {
+  .card { background: #1f2937; color: #f3f4f6; border-color: #374151; }
+  .ph, .form, .meaning.sub, .part { color: #9ca3af; }
+  button { background: #111827; color: #f3f4f6; border-color: #4b5563; }
+  button.add { background: #2563eb; border-color: #2563eb; color: #fff; }
+}

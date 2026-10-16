@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>随看随学</title>
+  <link rel="stylesheet" href="../pages/common.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="brand">随看随学</div>
+    <a id="openBook" href="#">单词本 <span id="bookCount"></span></a>
+  </header>
+
+  <section id="noLevel" class="box" hidden>
+    <p>还没做词汇量测试，做完才知道哪些词对你来说是生词。</p>
+    <button id="goTest" class="primary">去测试</button>
+  </section>
+
+  <section class="box">
+    <h2>阅读</h2>
+    <label class="row"><input type="checkbox" id="highlight"> 在网页上标出生词</label>
+    <label class="row"><input type="checkbox" id="siteOff"> 在 <span id="host"></span> 上停用</label>
+    <label class="row level">生词标准：排名
+      <input type="number" id="level" min="500" max="30000" step="500"> 之后
+      <a id="retest" href="#">重新测试</a></label>
+    <p class="muted small">选中网页上的单词或短语，点「查词」就能加入单词本。</p>
+  </section>
+
+  <section class="box">
+    <h2>视频</h2>
+    <p id="videoStatus" class="muted">正在检查当前页面…</p>
+    <div class="asr" id="asrBox" hidden>
+      <p id="asrStatus" class="small"></p>
+      <button id="asrToggle">没有字幕？开始本地听写</button>
+    </div>
+    <button id="summarize" class="primary" hidden>总结这段视频的高频词</button>
+    <div id="summary" hidden>
+      <div class="tabs"><b>生词</b> <span class="muted small">按出现次数排序</span></div>
+      <ul id="wordList" class="list"></ul>
+      <div class="tabs"><b>常用短语</b></div>
+      <ul id="phraseList" class="list"></ul>
+      <div class="sticky">
+        <button id="addSelected" class="primary">加入单词本</button>
+        <span id="addResult" class="muted small"></span>
+      </div>
+    </div>
+  </section>
+  <script src="../lib/store.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
