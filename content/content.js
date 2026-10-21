@@ -4,7 +4,21 @@
   window.__llLoaded = true;
 
   const { tokenize, normalize, sentenceAround, looksLikeProperNoun } = LLText;
-  const send = (msg) => chrome.runtime.sendMessage(msg);
+  // 插件被重新加载或更新后，旧页面里的这份脚本就和插件断开了，调用 chrome.* 会报错。
+  // 这时停掉自己，等用户刷新页面再用新脚本。
+  const alive = () => { try { return !!chrome.runtime.id; } catch (e) { return false; } };
+  let stopped = false;
+  function shutdown() {
+    if (stopped) return;
+    stopped = true;
+    observer.disconnect();
+    clearInterval(captionTimer);
+    host.remove();
+  }
+  const send = (msg) => {
+    if (!alive()) { shutdown(); return Promise.resolve(null); }
+    return chrome.runtime.sendMessage(msg).catch(() => null);
+  };
   const SKIP = 'script,style,noscript,textarea,input,select,code,pre,kbd,samp,svg,math,button,[contenteditable=""],[contenteditable="true"],ll-w,#ll-root';
   const BLOCK = 'p,li,td,th,dd,dt,h1,h2,h3,h4,h5,h6,blockquote,figcaption,article,section,div';
 
@@ -191,6 +205,7 @@
 
   card.addEventListener('click', async (e) => {
     if (!current) return;
+    if (!alive()) return shutdown();
     const btn = e.target.closest('button');
     if (!btn) return;
     const { info, sentence } = current;
@@ -336,7 +351,8 @@
 
   // 兜底：直接读屏幕上显示的字幕
   const CAPTION_SELECTORS = '.ytp-caption-segment, .bpx-player-subtitle-panel-text, .bili-subtitle-x-subtitle-panel-text, .vjs-text-track-cue, .plyr__caption';
-  setInterval(() => {
+  const captionTimer = setInterval(() => {
+    if (!alive()) return shutdown();
     if (!video.el || video.el.paused) return;
     resetIfNavigated();
     const segs = [...document.querySelectorAll(CAPTION_SELECTORS)].map((n) => n.textContent).join(' ');
