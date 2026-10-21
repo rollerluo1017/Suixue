@@ -1,10 +1,9 @@
-// 词汇量测试：按词频分段抽词，四选一，根据各段正确率估算词汇量。
-const PER_BAND = 4;
-let bands = [];
-let questions = [];
-let index = 0;
-let correct = [];   // 每段答对数
-let answered = [];  // 每段答题数
+// 词汇量测试：自适应出题（见 vocab-model.js），每题五选一，干扰项与正确答案同词性、难度相近。
+let pool = [];   // [单词, 排名, 词性, 释义]，按排名排序
+let ranks = [];
+let model = null;
+let used = new Set();
+let current = null;
 
 const $ = (id) => document.getElementById(id);
 const shuffle = (arr) => {
@@ -16,11 +15,44 @@ const shuffle = (arr) => {
   return a;
 };
 
-function buildQuestions() {
-  return bands.flatMap((band, b) => shuffle(band.words).slice(0, PER_BAND).map(([word, meaning]) => {
-    const others = shuffle(band.words.filter(([w, m]) => w !== word && m !== meaning)).slice(0, 3).map(([, m]) => m);
-    return { band: b, word, meaning, options: shuffle([meaning, ...others]) };
-  }));
+function indexOfRank(rank) {
+  let lo = 0;
+  let hi = ranks.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (ranks[mid] < rank) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+// 在目标排名附近挑一个没考过的词
+function pickWord(rank) {
+  const center = indexOfRank(rank);
+  const near = [];
+  for (let d = 0; near.length < 8 && d < 300; d++) {
+    for (const j of [center + d, center - d - 1]) {
+      if (j >= 0 && j < pool.length && !used.has(j)) near.push(j);
+    }
+  }
+  const j = near[Math.floor(Math.random() * near.length)];
+  used.add(j);
+  return pool[j];
+}
+
+// 干扰项：同词性、排名在一半到两倍之间、释义不重复
+function distractors([word, rank, pos, meaning]) {
+  const lo = indexOfRank(rank / 2);
+  const hi = indexOfRank(rank * 2);
+  const seen = new Set([meaning]);
+  const out = [];
+  for (const j of shuffle(Array.from({ length: hi - lo }, (_, k) => lo + k))) {
+    const [w, , p, m] = pool[j];
+    if (w === word || p !== pos || seen.has(m)) continue;
+    seen.add(m);
+    out.push(m);
+    if (out.length === 4) break;
+  }
+  return out;
 }
 
 function show(section) {
@@ -28,21 +60,23 @@ function show(section) {
 }
 
 function start() {
-  questions = buildQuestions();
-  index = 0;
-  correct = bands.map(() => 0);
-  answered = bands.map(() => 0);
+  model = VocabModel.create();
+  used = new Set();
   show('quiz');
-  renderQuestion();
+  nextQuestion();
 }
 
-function renderQuestion() {
-  const q = questions[index];
-  $('bar').style.width = (index / questions.length) * 100 + '%';
-  $('word').textContent = q.word;
+function nextQuestion() {
+  if (VocabModel.isDone(model)) return finish();
+  const [word, rank, pos, meaning] = pickWord(VocabModel.nextRank(model));
+  current = { word, rank, meaning };
+  const n = model.answers.length;
+  $('bar').style.width = Math.min(100, (n / VocabModel.MAX_QUESTIONS) * 100) + '%';
+  $('count').textContent = `第 ${n + 1} 题`;
+  $('word').textContent = word;
   const box = $('options');
   box.innerHTML = '';
-  for (const option of [...q.options, null]) {
+  for (const option of [...shuffle([meaning, ...distractors([word, rank, pos, meaning])]), null]) {
     const btn = document.createElement('button');
     btn.textContent = option === null ? '不认识' : option;
     if (option === null) btn.className = 'skip';
@@ -52,45 +86,24 @@ function renderQuestion() {
 }
 
 function answer(option, btn) {
-  const q = questions[index];
-  const ok = option === q.meaning;
-  answered[q.band]++;
-  if (ok) correct[q.band]++;
+  const ok = option === current.meaning;
+  VocabModel.update(model, current.rank, ok);
   const buttons = [...$('options').children];
-  buttons.forEach((b) => { b.disabled = true; if (b.textContent === q.meaning) b.classList.add('right'); });
+  buttons.forEach((b) => { b.disabled = true; if (b.textContent === current.meaning) b.classList.add('right'); });
   if (!ok && option !== null) btn.classList.add('wrong');
-  setTimeout(next, ok ? 350 : 900);
+  setTimeout(nextQuestion, ok ? 300 : 800);
 }
 
-function bandDone(b) {
-  return answered[b] === PER_BAND;
-}
-
-function next() {
-  const q = questions[index];
-  index++;
-  // 连续两段都只答对一题以内，后面更难的段就不用测了
-  if (bandDone(q.band) && q.band > 0 && correct[q.band] <= 1 && correct[q.band - 1] <= 1) return finish();
-  if (index >= questions.length) return finish();
-  renderQuestion();
-}
-
-function estimate() {
-  let total = 0;
-  bands.forEach((band, b) => {
-    if (!answered[b]) return;
-    total += (band.to - band.from + 1) * (correct[b] / answered[b]);
-  });
-  return Math.max(500, Math.round(total / 100) * 100);
-}
+const round = (v) => Math.max(100, Math.round(v / 100) * 100);
 
 function finish() {
-  const vocab = estimate();
-  $('vocab').textContent = vocab.toLocaleString();
-  const right = correct.reduce((a, b) => a + b, 0);
-  const asked = answered.reduce((a, b) => a + b, 0);
-  $('detail').textContent = `共答 ${asked} 题，答对 ${right} 题。`;
-  $('level').value = vocab;
+  const s = VocabModel.summary(model);
+  $('vocab').textContent = round(s.vocab).toLocaleString();
+  $('range').textContent = `${round(s.vocabLow).toLocaleString()} ～ ${round(s.vocabHigh).toLocaleString()}`;
+  const right = model.answers.filter((a) => a.correct).length;
+  $('detail').textContent = `共答 ${model.answers.length} 题，答对 ${right} 题。`;
+  const level = Math.min(30000, Math.max(500, Math.round(s.level / 100) * 100));
+  $('level').value = level;
   updateLevelText();
   $('saved').hidden = true;
   show('result');
@@ -108,4 +121,7 @@ $('save').onclick = async () => {
   $('saved').hidden = false;
 };
 
-fetch('../data/testpool.json').then((r) => r.json()).then((pool) => { bands = pool; });
+fetch('../data/testpool.json').then((r) => r.json()).then((data) => {
+  pool = data;
+  ranks = data.map((x) => x[1]);
+});

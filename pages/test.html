@@ -11,22 +11,25 @@
   <main>
     <section id="intro" class="panel">
       <h1>先测一下你的词汇量</h1>
-      <p>大约 3 分钟。每题选出单词的中文意思，不认识就选「不认识」，别猜，结果会更准。</p>
+      <p>大约 25～45 题，3～4 分钟。每题选出单词的中文意思。</p>
+      <p><b>不认识就选「不认识」，别猜。</b>题目会根据你的回答调整难度，蒙对会让后面的题和结果都偏高。</p>
       <p class="muted">测完后，阅读英文网页时比你水平更难的词会被自动标出来。</p>
       <button id="start" class="primary">开始测试</button>
     </section>
 
     <section id="quiz" class="panel" hidden>
       <div class="progress"><div id="bar"></div></div>
+      <div id="count" class="muted count"></div>
       <div id="word" class="word"></div>
       <div id="options" class="options"></div>
     </section>
 
     <section id="result" class="panel" hidden>
       <h1>你的词汇量约 <span id="vocab"></span> 词</h1>
+      <p>大概率在 <b id="range"></b> 词之间。</p>
       <p class="muted" id="detail"></p>
       <div class="adjust">
-        <label for="level">生词标准：词频排名在 <b id="levelText"></b> 之后的词标为生词</label>
+        <label for="level">生词标准：词频排名在 <b id="levelText"></b> 之后的词标为生词（这个排名附近的词你大约认识一半）</label>
         <input id="level" type="range" min="500" max="30000" step="500">
         <p class="muted">觉得标出来的词太多就往右拖，太少就往左拖。以后也可以在插件面板里改。</p>
       </div>
@@ -38,6 +41,7 @@
     </section>
   </main>
   <script src="../lib/store.js"></script>
+  <script src="vocab-model.js"></script>
   <script src="test.js"></script>
 </body>
 </html>

@@ -4,11 +4,14 @@
 输出: data/dict.json  单词 -> [词频排名, 音标, 中文释义]
       data/lemma.json 变形 -> 原形 (went -> go)
       data/phrases.json 短语 -> [中文释义, 难度]  难度: 0 太常见, 1 动词短语/习语, 2 普通搭配
-      data/testpool.json 单词测试题库 (按词频分段)
+      data/testpool.json 词汇量测试题库 [单词, 排名, 词性, 释义]，按排名排序
 """
-import csv, json, os, random, re, sys
+import csv, json, os, re, sys
 
 UNRANKED = 60000
+# 各类考试词表大致对应的词频排名，用来剔除难度和词频不一致的测试词
+TAG_LEVEL = {'zk': 1500, 'gk': 3500, 'cet4': 4500, 'cet6': 7000, 'ky': 6500,
+             'ielts': 8000, 'toefl': 8000, 'gre': 13000}
 # 动词 + 这些小品词，通常是意思不能从字面推出来的动词短语 (give up, pay off)
 PARTICLES = {'up', 'down', 'off', 'out', 'over', 'away', 'back', 'through', 'around', 'round',
              'along', 'apart', 'aside', 'forward', 'in', 'on', 'into', 'across', 'by'}  # 没有词频的考试词，按很生僻处理
@@ -39,6 +42,7 @@ def main(src):
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data')
     os.makedirs(root, exist_ok=True)
     words, lemma, phrases, rows, names = {}, {}, {}, [], set()  # names: 不适合出测试题的词
+    tags = {}
     for row in csv.DictReader(open(src, encoding='utf-8')):
         rows.append(row)
         w, tr = row['word'], row['translation']
@@ -51,6 +55,8 @@ def main(src):
         if not meaning:
             continue
         words[w] = [rank or UNRANKED, row['phonetic'], meaning]
+        if row['tag']:
+            tags[w] = row['tag'].split()
         if NAME_RE.search(tr) or not (row['tag'] or row['collins'] or row['oxford']):
             names.add(w)
         for item in (row['exchange'] or '').split('/'):
@@ -82,23 +88,38 @@ def main(src):
     # 变形本身也可能是词条 (rose)，查词时取两者中更常用的排名
     lemma = {k: v for k, v in lemma.items() if v in words}
 
-    bands = [(1, 1000), (1001, 2000), (2001, 3000), (3001, 4000), (4001, 5000),
-             (5001, 6500), (6501, 8000), (8001, 10000), (10001, 12500),
-             (12501, 15000), (15001, 20000), (20001, 30000)]
-    rng = random.Random(42)
+    # 词汇量测试题库：词频排名 1～35000 连续取词，记下词性，方便出同词性的干扰项
+    def root_rank(w):
+        """派生词 (determinedly, kindness) 的词根排名；词根简单的话这个词不适合测水平。"""
+        best = UNRANKED
+        for suf in ('ly', 'ness', 'ment', 'ity', 'ful', 'less', 'able', 'er', 'ist', 'ism', 'ize', 'ise'):
+            if w.endswith(suf) and len(w) - len(suf) >= 3:
+                stem = w[:-len(suf)]
+                for root in (stem, stem + 'e', stem[:-1] + 'y' if stem.endswith('i') else stem, stem[:-1] if stem[-1:] == stem[-2:-1] else stem):
+                    if root in words:
+                        best = min(best, words[root][0])
+        return best
+
     pool = []
-    for lo, hi in bands:
-        cands = []
-        for w, (rank, _, meaning) in words.items():
-            if not (lo <= rank <= hi) or len(w) < 3 or not w.isalpha():
+    for w, (rank, _, meaning) in words.items():
+        if rank > 35000 or len(w) < 3 or not w.isalpha():
+            continue
+        if not POS_RE.match(meaning) or w in lemma or w in names:
+            continue
+        if root_rank(w) < rank * 0.5:
+            continue
+        # 中国学生的难度和词频对不上的词（cabbage 词频排 7000 但中考就学过）测不准水平，不出题
+        if w in tags:
+            level = min(TAG_LEVEL.get(t, UNRANKED) for t in tags[w])
+            # 词频比考试级别冷僻得多（实际更简单），或常用却只出现在高级词表里（实际更难）
+            if level < UNRANKED and (rank > level * 2.5 or (level >= 4500 and rank < level / 2.5)):
                 continue
-            if not POS_RE.match(meaning) or w in lemma or w in names:
-                continue
-            m = short_meaning(meaning)
-            if 1 < len(m) <= 14:
-                cands.append([w, m])
-        rng.shuffle(cands)
-        pool.append({'from': lo, 'to': hi, 'words': cands[:60]})
+        pos = POS_RE.match(meaning).group(1)
+        pos = {'vt': 'v', 'vi': 'v', 'a': 'adj'}.get(pos, pos)
+        m = short_meaning(meaning)
+        if 1 < len(m) <= 14:
+            pool.append([w, rank, pos, m])
+    pool.sort(key=lambda x: x[1])
 
     def dump(name, obj):
         with open(os.path.join(root, name), 'w', encoding='utf-8') as f:
@@ -108,7 +129,7 @@ def main(src):
     dump('phrases.json', phrases)
     dump('testpool.json', pool)
     print(f'{len(words)} words, {len(lemma)} forms, {len(phrases)} phrases, '
-          f'test bands: {[len(b["words"]) for b in pool]}')
+          f'{len(pool)} test words')
 
 
 if __name__ == '__main__':
