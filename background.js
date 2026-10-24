@@ -28,6 +28,7 @@ function resolve(data, raw) {
     word: own ? w : base,
     base: base || w,
     rank,
+    name: (own || baseEntry)[3] || 0, // 1 也常用作人名，2 只是人名
     phonetic: entry[1],
     meaning: entry[2],
     baseMeaning: own && baseEntry ? baseEntry[2] : null,
@@ -65,9 +66,9 @@ async function summarizeLines(data, lines, level) {
     const lemmed = tokens.map((t) => lemmaOf(data, t.word));
     tokens.forEach((t, i) => {
       const w = lowered[i];
-      if (LLText.STOPWORDS.has(w) || w.length < 3 || LLText.looksLikeProperNoun(line, t)) return;
+      if (LLText.STOPWORDS.has(w) || w.length < 3 || LLText.looksLikeProperNoun(line, t) || LLText.looksLikeUsername(line, t)) return;
       const info = resolve(data, w);
-      if (!info) return;
+      if (!info || info.name === 2 || (info.name && /^[A-Z]/.test(t.word))) return; // 人名不算生词
       const key = info.base;
       const item = words.get(key) || { word: key, count: 0, rank: info.rank, example: line, forms: new Set() };
       item.count++;
@@ -201,7 +202,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const out = {};
         for (const w of msg.words) {
           const info = resolve(data, w);
-          if (info) out[w] = [info.rank, info.base];
+          if (info) out[w] = [info.rank, info.base, info.name];
         }
         return out;
       }

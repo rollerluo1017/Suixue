@@ -1,7 +1,8 @@
 """从 ECDICT (https://github.com/skywind3000/ECDICT, MIT) 生成插件用的离线数据。
 
 用法: python3 tools/build_data.py path/to/ecdict.csv
-输出: data/dict.json  单词 -> [词频排名, 音标, 中文释义]
+输出: data/dict.json  单词 -> [词频排名, 音标, 中文释义] 或 [..., 人名标记]
+                    人名标记 1: 也常用作人名（大写时不当生词）；2: 只是人名（永远不当生词）
       data/lemma.json 变形 -> 原形 (went -> go)
       data/phrases.json 短语 -> [中文释义, 难度]  难度: 0 太常见, 1 动词短语/习语, 2 普通搭配
       data/testpool.json 词汇量测试题库 [单词, 排名, 词性, 释义]，按排名排序
@@ -17,7 +18,7 @@ PARTICLES = {'up', 'down', 'off', 'out', 'over', 'away', 'back', 'through', 'aro
              'along', 'apart', 'aside', 'forward', 'in', 'on', 'into', 'across', 'by'}  # 没有词频的考试词，按很生僻处理
 WORD_RE = re.compile(r"[a-z][a-z'-]*")
 PHRASE_RE = re.compile(r"[a-z][a-z']*( [a-z][a-z']*){1,3}")
-NAME_RE = re.compile(r"人名|姓氏|地名|男子名|女子名|[(（]\s*[A-Z]")
+NAME_RE = re.compile(r"人名|姓氏|地名|男子名|女子名|城市|品牌|[(（]\s*[A-Z]")
 POS_RE = re.compile(r"^(n|v|vt|vi|adj|a|adv|prep|conj|pron|num|int|art|aux)\.")
 
 
@@ -43,6 +44,9 @@ def main(src):
     os.makedirs(root, exist_ok=True)
     words, lemma, phrases, rows, names = {}, {}, {}, [], set()  # names: 不适合出测试题的词
     tags = {}
+    here = os.path.dirname(os.path.abspath(__file__))
+    common_names = {l.strip() for l in open(os.path.join(here, 'names.txt'), encoding='utf-8')
+                    if l.strip() and not l.startswith('#')}
     for row in csv.DictReader(open(src, encoding='utf-8')):
         rows.append(row)
         w, tr = row['word'], row['translation']
@@ -55,6 +59,11 @@ def main(src):
         if not meaning:
             continue
         words[w] = [rank or UNRANKED, row['phonetic'], meaning]
+        senses = [x for x in re.split(r'[；\n]', tr.replace('\\n', '\n')) if x.strip() and not x.strip().startswith('[网络]')]
+        if senses and all(NAME_RE.search(x) for x in senses):
+            words[w].append(2)
+        elif w in common_names or NAME_RE.search(tr):
+            words[w].append(1)
         if row['tag']:
             tags[w] = row['tag'].split()
         if NAME_RE.search(tr) or not (row['tag'] or row['collins'] or row['oxford']):
@@ -68,7 +77,7 @@ def main(src):
 
     easy = {l.strip() for l in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'easy_phrases.txt'), encoding='utf-8')
             if l.strip() and not l.startswith('#')}
-    verbs = {w for w, (_, _, m) in words.items() if re.match(r'^(v|vt|vi)\.', m) or re.search(r'；(v|vt|vi)\.', m)}
+    verbs = {w for w, (_, _, m, *_) in words.items() if re.match(r'^(v|vt|vi)\.', m) or re.search(r'；(v|vt|vi)\.', m)}
     for row in rows:
         w, tr = row['word'], row['translation']
         if not tr or not PHRASE_RE.fullmatch(w) or tr.lstrip().startswith('['):
@@ -101,7 +110,7 @@ def main(src):
         return best
 
     pool = []
-    for w, (rank, _, meaning) in words.items():
+    for w, (rank, _, meaning, *_) in words.items():
         if rank > 35000 or len(w) < 3 or not w.isalpha():
             continue
         if not POS_RE.match(meaning) or w in lemma or w in names:

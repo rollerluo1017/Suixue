@@ -3,7 +3,7 @@
   if (window.__llLoaded) return;
   window.__llLoaded = true;
 
-  const { tokenize, normalize, sentenceAround, looksLikeProperNoun } = LLText;
+  const { tokenize, normalize, sentenceAround, looksLikeProperNoun, looksLikeUsername } = LLText;
   // 插件被重新加载或更新后，旧页面里的这份脚本就和插件断开了，调用 chrome.* 会报错。
   // 这时停掉自己，等用户刷新页面再用新脚本。
   const alive = () => { try { return !!chrome.runtime.id; } catch (e) { return false; } };
@@ -19,13 +19,16 @@
     if (!alive()) { shutdown(); return Promise.resolve(null); }
     return chrome.runtime.sendMessage(msg).catch(() => null);
   };
-  const SKIP = 'script,style,noscript,textarea,input,select,code,pre,kbd,samp,svg,math,button,[contenteditable=""],[contenteditable="true"],ll-w,#ll-root';
+  // 用户名、作者署名这类区域整块跳过
+  const NAME_AREAS = '[class*="username" i],[class*="user-name" i],[class*="author" i],[class*="nickname" i],[class*="handle" i],[class*="screen-name" i],[class*="byline" i],[itemprop="author"],[rel="author"],a[href^="/@"],a[href*="/user/"],a[href*="/u/"],a[data-hovercard-type="user"]';
+  const SKIP = 'script,style,noscript,textarea,input,select,code,pre,kbd,samp,svg,math,button,[contenteditable=""],[contenteditable="true"],ll-w,#ll-root,' + NAME_AREAS;
   const BLOCK = 'p,li,td,th,dd,dt,h1,h2,h3,h4,h5,h6,blockquote,figcaption,article,section,div';
 
   let settings = null;
   let known = new Set();
   let wordbook = {};
-  const rankCache = new Map(); // 小写单词 -> [排名, 原形] | null
+  const rankCache = new Map(); // 小写单词 -> [排名, 原形, 人名标记] | null
+  const pageNames = new Set();  // 本页在句中以大写出现过的词，句首出现时也当人名
 
   // ---------- 生词高亮 ----------
 
@@ -36,8 +39,21 @@
   function isHard(lower) {
     const hit = rankCache.get(lower);
     if (!hit) return false;
-    const [rank, base] = hit;
-    return rank > settings.level && !known.has(base) && !known.has(lower);
+    const [rank, base, name] = hit;
+    return name !== 2 && rank > settings.level && !known.has(base) && !known.has(lower);
+  }
+
+  // 人名、用户名不算生词
+  function isNameToken(text, t) {
+    if (looksLikeUsername(text, t)) return true;
+    if (!/^[A-Z]/.test(t.word)) return false;
+    const lower = normalize(t.word);
+    if (looksLikeProperNoun(text, t)) {
+      pageNames.add(lower);
+      return true;
+    }
+    const hit = rankCache.get(lower);
+    return pageNames.has(lower) || !!(hit && hit[2]);
   }
 
   function textNodesIn(root) {
@@ -71,7 +87,7 @@
   function wrapNode(node) {
     if (!node.isConnected) return;
     const text = node.nodeValue;
-    const hard = tokenize(text).filter((t) => isHard(normalize(t.word)) && !looksLikeProperNoun(text, t));
+    const hard = tokenize(text).filter((t) => isHard(normalize(t.word)) && !isNameToken(text, t));
     if (!hard.length) return;
     const frag = document.createDocumentFragment();
     let pos = 0;
@@ -96,6 +112,9 @@
     const nodes = roots.flatMap(textNodesIn);
     if (!nodes.length) return;
     await lookupWords(nodes.flatMap((n) => tokenize(n.nodeValue).map((t) => normalize(t.word))));
+    for (const n of nodes) {
+      for (const t of tokenize(n.nodeValue)) if (looksLikeProperNoun(n.nodeValue, t)) pageNames.add(normalize(t.word));
+    }
     for (let i = 0; i < nodes.length; i += 200) {
       queueMutations();
       nodes.slice(i, i + 200).forEach(wrapNode);
